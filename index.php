@@ -27,16 +27,24 @@ switch($_SERVER['REQUEST_METHOD']) {
         }
         break;
     case 'POST':
-        json($service->create($_POST));
+        if (count($_POST) > 0) {
+            json($service->create($_POST));
+        } else {
+            json($service->create(getRequestBody()));
+        }
         break;
     case 'PUT':
-        json($service->update(json_decode(file_get_contents("php://input"), true)));
+        json($service->update(getRequestBody()));
         break;
     case 'DELETE':
         json($service->delete($id));
         break;
     default:
         break;
+}
+
+function getRequestBody() {
+    return json_decode(file_get_contents("php://input"), true);
 }
 
 function json($data) {
