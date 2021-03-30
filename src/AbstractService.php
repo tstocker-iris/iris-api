@@ -2,6 +2,8 @@
 
 abstract class AbstractService {
     protected $tableName;
+    protected $columns;
+    protected $primaryKey = 'id';
     private $dbConnection;
 
     public function __construct() {
@@ -25,15 +27,32 @@ abstract class AbstractService {
     }
 
     public function get($id) {
-        $stm = $this->dbConnection->prepare("SELECT * FROM {$this->tableName} WHERE id = :id;");
+        $stm = $this->dbConnection->prepare("SELECT * FROM {$this->tableName} WHERE {$this->primaryKey} = :id;");
         $stm->bindParam('id', $id);
         $stm->execute();
 
         return $stm->fetchAll(PDO::FETCH_ASSOC);
     }
+    private function getColumnsWithoutPrimaryKey() {
+        $columns = $this->columns;
+        if (false !== $key = array_search($this->primaryKey, $columns)) {
+            unset($columns[$key]);
+        }
+        return $columns;
+    }
     public function create($data) {
-        $stm = $this->dbConnection->prepare("INSERT INTO {$this->tableName}(`name`) VALUES (:name)");
-        $stm->bindParam('name', $data['name']);
+        $columns = $this->getColumnsWithoutPrimaryKey();
+        $sql = "INSERT INTO {$this->tableName}(";
+        $sql .= implode(', ', array_map(function($item) { return "`$item`"; }, $columns));
+        $sql .= ") VALUES(";
+        $sql .= implode(', ', array_map(function($item) { return ":$item"; }, $columns));
+        $sql .= ")";
+
+
+        $stm = $this->dbConnection->prepare($sql);
+        foreach($columns as $col) {
+            $stm->bindParam($col, $data[$col]);
+        }
         $stm->execute();
 
         $data['id'] = $this->dbConnection->lastInsertId();
@@ -41,15 +60,31 @@ abstract class AbstractService {
         return $data;
     }
     public function update($data) {
-        $stm = $this->dbConnection->prepare("UPDATE {$this->tableName} set `name` = :name WHERE id = :id");
-        $stm->bindParam('name', $data['name']);
-        $stm->bindParam('id', $data['id']);
+        $columns = $this->getColumnsWithoutPrimaryKey();
+        $sql = "UPDATE {$this->tableName} SET ";
+        $i = 0;
+        $len = count($columns);
+        foreach ($columns as $col) {
+            $sql .= "`$col` = :$col";
+            if ($i !== $len - 1) {
+                $sql .= ', ';
+            }
+            $i++;
+        }
+        $sql .= " WHERE {$this->primaryKey} = :id";
+
+        $stm = $this->dbConnection->prepare($sql);
+
+        foreach($columns as $col) {
+            $stm->bindParam($col, $data[$col]);
+        }
+        $stm->bindParam($this->primaryKey, $data[$this->primaryKey]);
         $stm->execute();
 
         return $data;
     }
     public function delete($id) {
-        $stm = $this->dbConnection->prepare("DELETE FROM {$this->tableName} WHERE id = :id");
+        $stm = $this->dbConnection->prepare("DELETE FROM {$this->tableName} WHERE {$this->primaryKey} = :id");
         $stm->bindParam('id', $id);
         $stm->execute();
 
