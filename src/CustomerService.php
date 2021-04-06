@@ -7,6 +7,7 @@ class CustomerService extends AbstractService {
         'firstname',
         'lastname',
         'address',
+        'email',
         'zipcode',
         'city',
     ];

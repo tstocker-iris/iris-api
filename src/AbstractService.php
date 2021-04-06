@@ -20,7 +20,6 @@ abstract class AbstractService {
 
     public function getAll() {
         $stm = $this->dbConnection->prepare("SELECT * FROM {$this->tableName};");
-        $stm->bindParam('id', $id);
         $stm->execute();
 
         return $stm->fetchAll(PDO::FETCH_ASSOC);
@@ -28,7 +27,7 @@ abstract class AbstractService {
 
     public function get($id) {
         $stm = $this->dbConnection->prepare("SELECT * FROM {$this->tableName} WHERE {$this->primaryKey} = :id;");
-        $stm->bindParam('id', $id);
+        $stm->bindValue(':id', $id);
         $stm->execute();
 
         return $stm->fetchAll(PDO::FETCH_ASSOC);
@@ -44,15 +43,15 @@ abstract class AbstractService {
         $columns = $this->getColumnsWithoutPrimaryKey();
         $sql = "INSERT INTO {$this->tableName}(";
         $sql .= implode(', ', array_map(function($item) { return "`$item`"; }, $columns));
-        $sql .= ") VALUES(";
+        $sql .= ") VALUES (";
         $sql .= implode(', ', array_map(function($item) { return ":$item"; }, $columns));
         $sql .= ")";
 
-
         $stm = $this->dbConnection->prepare($sql);
         foreach($columns as $col) {
-            $stm->bindParam($col, $data[$col]);
+            $stm->bindValue(":$col", $data[$col]);
         }
+
         $stm->execute();
 
         $data['id'] = $this->dbConnection->lastInsertId();
@@ -76,16 +75,16 @@ abstract class AbstractService {
         $stm = $this->dbConnection->prepare($sql);
 
         foreach($columns as $col) {
-            $stm->bindParam($col, $data[$col]);
+            $stm->bindValue($col, $data[$col]);
         }
-        $stm->bindParam($this->primaryKey, $data[$this->primaryKey]);
+        $stm->bindValue($this->primaryKey, $data[$this->primaryKey]);
         $stm->execute();
 
         return $data;
     }
     public function delete($id) {
         $stm = $this->dbConnection->prepare("DELETE FROM {$this->tableName} WHERE {$this->primaryKey} = :id");
-        $stm->bindParam('id', $id);
+        $stm->bindValue('id', $id);
         $stm->execute();
 
         return true;
